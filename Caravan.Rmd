@@ -29,23 +29,16 @@ library(caret)
 library(kernlab)
 library(e1071)
 library(GGally)
+library(ISLR)
 ```
 
 #Introduction
 
-The National Basketball Association (NBA) is a men's professional basketball league in North America. It is composed of 30 teams, 29 teams in the United States and 1 team in Canada. It is widely considered to be the premier men's professional basketball league in the world. 
 
-The NBA is considered one of the four major professional sports leagues in the United States and Canada. The NBA players are the world's best paid athletes by average annual salary per player, among which are Michael Jordan, Kobe Bryant, LeBron James, Kareem Abdul-Jabbar, etc. Considering the huge prevelage gained by these athletes, I find it interesting to invetigate the career longevity of NBA players in the league based on their athlectic performance in the field. 
-
-In this project, the player's career length is devided into two categories of more/less than 5 years, associated with output values of 1/0, respectively. 
 
 ##DATA EXPLANATION
 
-The data set provides the information about the field performance of each player of NBA, from 1980 to 2016. It consists of 1340 observations with 21 variables. The values for each variable except for the career longevity is calculated as mean per game during the associated rookie year. 
 
-The original source of the dataset is the official website for the National Bascketbal Association (www.NBA.com) and the current dataset was retrieved from the data.world repository for data analysis and competition.
-
-The list of all the variables are showin in Table. 1.
 
 
 ###Attribute Information
@@ -84,42 +77,26 @@ TARGET_5Yrs & Outcome=1(career length>=5 yrs),Outcome=0(career length<5)\\
 \end{table}
 
 The TARGET_5Yrs should be analyzed as a binary class, versus other variables for each athlete: GP, MIN, PTS, FGM, FGA, FG.,X3P.Made, X3PA, X3P.,FTM, FTA,FT.,OREB, DREB, REB, AST, STL, BLK, TOV. 
-
-```{r GETDATA, echo=TRUE}
-df <-read.csv("/Users/sahba/Dropbox/Data Science/NBA longevity/nba_logreg.csv", header=T, stringsAsFactors=F)
-str(df)
+```{r}
+summary(Caravan)
+plot(Caravan$Purchase)
 ```
+
+
 
 ## Data engineering : 
 
 In this stage the NA values of the data set has been detedcted and the rows with such values are omitted from the data set. 
 
 ```{r Omit NA , echo = FALSE}
-df <- na.omit(df)
+df <- na.omit(Caravan)
 #creating a data set without names:
-df <- df[,2:21]
 str(df)
 ```
 
 
 #Train/Test Split:
 
-Just because a learning algorithm fits a training set well, that does not mean it is a good hypothesis. It could over fit and as a result your predictions on the test set would be poor. The error of your hypothesis as measured on the data set with which you trained the parameters will be lower than the error on any other data set.
-
-Given many models with different polynomial degrees, we can use a systematic approach to identify the 'best' function. In order to choose the model of your hypothesis, you can test each degree of polynomial and look at the error result.
-
-One way to break down our dataset into the three sets is:
-
-Training set: 60%
-Cross validation set: 20%
-Test set: 20%
-We can now calculate three separate error values for the three different sets using the following method:
-
-Optimize the parameters in Θ using the training set for each polynomial degree.
-Find the polynomial degree d with the least error using the cross validation set.
-Estimate the generalization error using the test set with 
-, (d = theta from polynomial with lower error);
-This way, the degree of the polynomial d has not been trained using the test set.
 
 
 ```{r test&cv&train, echo = FALSE}
@@ -130,22 +107,6 @@ test <- df [split==2,]
 ```
 
 
-At the very first step, because of importance, the correlation matrix for the predictors were plotted to have a better understatnding about this dataset.Since in fitting the logistic regression or regression model, existing any collinearity between predictors lead to poor fitting.
-
-```{r Correlation Matrix, echo=FALSE,fig.caption="Correlation Matrix"}
-correlationMatrix<- cor(train[,-1])
-#Figure 1
-corrplot(correlationMatrix, type="lower")
-```
-
-
-```{r Scatter-CORRELATION-PLOT2, echo=FALSE, results = "asis", fig.width=20, fig.height=19, fig.cap = ",,,,,,"}
-#Figure 2
-#ggpairs(df, aes(color=factor(TARGET_5Yrs), alpha=0.75), lower=list(continuous="smooth"))+ 
-#  theme_bw()+
-#  labs(title=".......")+
-#  theme(plot.title=element_text(face='bold',color='black',hjust=0.5,size=12))
-```
 
 ## Use caret for training machine learning models
 
@@ -157,20 +118,9 @@ caretControl <- trainControl(method = "boot",number = 25, classProbs =  TRUE)
 ```
 
 
-```{r}
-library(plyr)
-train$TARGET_5Yrs <- revalue(as.factor(train$TARGET_5Yrs), c("0"="zero", "1"="one"))
-test$TARGET_5Yrs <- revalue(as.factor(test$TARGET_5Yrs), c("0"="zero", "1"="one"))
-#mapvalues(train$TARGET_5Yrs, from = c("0", "1"), to = c("zero", "one"))
-levels(as.factor(train$TARGET_5Yrs))
-levels(as.factor(test$TARGET_5Yrs))
-```
-
-
-
 ```{r trian GLM}
 set.seed(3233)
-modelGLM <- train(as.factor(TARGET_5Yrs)~., data = train, method = "glm",
+modelGLM <- train(as.factor(Purchase)~., data = train, method = "glm",
                  trControl=caretControl)
 summary(modelGLM)
 modelGLM
@@ -181,35 +131,14 @@ modelGLM
 #turn probabilities into classess and look at their frequencies:
 p_modelGLM <- predict(modelGLM, test, type="prob")
 p_ClassGLM <- predict(modelGLM, test)
-confusionMatrix(p_ClassGLM, factor(test$TARGET_5Yrs))
+confusionMatrix(p_ClassGLM, factor(test$Purchase))
 ```
-
-
-##Use AIC
-
-
-```{r AIC}
-set.seed(3233)
-modelAIC <- train(factor(TARGET_5Yrs)~., data = train, method = "glmStepAIC",
-                 trControl=caretControl)
-#summary(modelAIC)
-#modelAIC
-```
-
-
-```{r AIC confusion}
-#turn probabilities into classess and look at their frequencies:
-p_modelAIC <- predict(modelAIC, test, type = "prob")
-p_ClassAIC <- predict(modelGLM, test)
-confusionMatrix(p_ClassAIC, factor(test$TARGET_5Yrs))
-```
-
 
 ##SVM
 ##SVMLinear
 ```{r trian SVM Linear}
 set.seed(3233)
-modelSVMLinear <- train(factor(TARGET_5Yrs)~., data = train, method = "svmLinear",
+modelSVMLinear <- train(factor(Purchase)~., data = train, method = "svmLinear",
                  trControl=caretControl, Probs =  TRUE)
 summary(modelSVMLinear)
 modelSVMLinear
@@ -219,13 +148,13 @@ modelSVMLinear
 ```{r}
 p_modelSVMLinear <- predict(modelSVMLinear, test, "prob")
 p_ClassSVMLinear <- predict(modelSVMLinear, test)
-confusionMatrix(p_ClassSVMLinear, factor(test$TARGET_5Yrs))
+confusionMatrix(p_ClassSVMLinear, factor(test$Purchase))
 ```
 
 
 ```{r trian SVM Radial}
 set.seed(3233)
-modelSVMRadial <- train(factor(TARGET_5Yrs)~., data = train, method = "svmRadial",
+modelSVMRadial <- train(factor(Purchase)~., data = train, method = "svmRadial",
                  trControl=caretControl)
 summary(modelSVMRadial)
 modelSVMRadial
@@ -234,35 +163,35 @@ modelSVMRadial
 ```{r}
 p_modelSVMRadial <- predict(modelSVMRadial, test, "prob")
 p_ClasslSVMRadial <- predict(modelSVMRadial, test)
-confusionMatrix(p_ClasslSVMRadial, factor(test$TARGET_5Yrs))
+confusionMatrix(p_ClasslSVMRadial, factor(test$Purchase))
 ```
 
 
 ```{r COMPARISON GLM, AIC, SVMlinear and SVMradial}
-comparison<-resamples(list(GLM=modelGLM, AIC=modelAIC, SVMLinear=modelSVMLinear, SVMRadial=modelSVMRadial))
+comparison<-resamples(list(GLM=modelGLM, SVMLinear=modelSVMLinear, SVMRadial=modelSVMRadial))
 summary(comparison)
 ```
 
+```{r trian Penalized}
+set.seed(3233)
+modelPenalized<- train(factor(Purchase)~., data = train, method = "penalized",
+                 trControl=caretControl)
+summary(modelPenalized)
+modelPenalized
+```
+
+
 ```{r ROC for GLM}
-ROC_GLM <- roc(factor(test$TARGET_5Yrs)~p_modelGLM[,2], plot = TRUE, print.auc = TRUE,main="ROC for GLM")
+ROC_GLM <- roc(factor(test$Purchase)~p_modelGLM[,2], plot = TRUE, print.auc = TRUE,main="ROC for GLM")
 ```
 
-
-```{r ROC for AIC}
-ROC_AIC <- roc(factor(test$TARGET_5Yrs)~p_modelAIC[,2], plot = TRUE, print.auc = TRUE,main="ROC for AIC")
-```
 
 
 ```{r ROC for SVMlinear}
-ROC_SVMlinear<- roc(factor(test$TARGET_5Yrs)~p_modelSVMLinear[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM withlinear kernel")
+ROC_SVMlinear<- roc(factor(test$Purchase)~p_modelSVMLinear[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM withlinear kernel")
 ```
+
+
 ```{r ROC for SVMRadial}
-ROC_SVMRadial<- roc(factor(test$TARGET_5Yrs)~p_modelSVMRadial[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
+ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
 ```
-
-
-
-
-
-
-
