@@ -1,5 +1,5 @@
 ---
-title: "NBA"
+title: "ISLR::Caravan"
 author: "Sahba Salarian"
 date: 'Feb. 2019'
 output: pdf_document
@@ -42,41 +42,7 @@ library(ISLR)
 
 
 ###Attribute Information
-\begin{table}[h!]
-	\begin{tabular}{ c c    }
-		\hline\hline
-			\centering
-		 Column Names& Explanation   \\
-		\hline
-		name & ASCII subject name and recording number\\ 
-Name  & Name \\
-GP    & Games Played \\
-MIN   & Minutes Played \\
-PTS   & Points Per Game \\
-FGM   & Field Goals Made \\
-FGA   & Field Goals Attempts \\
-FG.   & Field Goals Percent \\
-X3P.Made & 3_Points Made \\
-X3PA  & 3_Points Attempts\\ 
-X3P.  & 3_Points Attempts Percentage\\ 
-FTM   & Free Throw Made \\
-FTA   & Free throw Attempts \\
-FT.   & Free throw Percenrage \\
-OREB  & Offensive Rebounds\\
-DREB  & Defenive Rebounds\\
-REB   & Rebounds\\
-AST   & Assists\\
-STL   & Steals\\
-BLK   & Blocks\\
-TOV   & Turnovers\\
-TARGET_5Yrs & Outcome=1(career length>=5 yrs),Outcome=0(career length<5)\\ 
-		\hline
-	\end{tabular}
-	\caption{Attribute Information}
-	\label{tab1}
-\end{table}
 
-The TARGET_5Yrs should be analyzed as a binary class, versus other variables for each athlete: GP, MIN, PTS, FGM, FGA, FG.,X3P.Made, X3PA, X3P.,FTM, FTA,FT.,OREB, DREB, REB, AST, STL, BLK, TOV. 
 ```{r}
 summary(Caravan)
 plot(Caravan$Purchase)
@@ -172,13 +138,7 @@ comparison<-resamples(list(GLM=modelGLM, SVMLinear=modelSVMLinear, SVMRadial=mod
 summary(comparison)
 ```
 
-```{r trian Penalized}
-set.seed(3233)
-modelPenalized<- train(factor(Purchase)~., data = train, method = "penalized",
-                 trControl=caretControl)
-summary(modelPenalized)
-modelPenalized
-```
+
 
 
 ```{r ROC for GLM}
