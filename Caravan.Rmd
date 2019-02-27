@@ -135,16 +135,7 @@ confusionMatrix(p_ClasslSVMRadial, factor(test$Purchase))
 ```
 
 
-## MARS with penalty
 
-```{r}
-modelMARS <- earth(factor(Purchase)~., data=train, degree=2,keepxy=TRUE, ncross=3, nfold=5, penalty = -1)
-```
-
-
-```{r}
-plot(fit, which=1, col.rsq=0)
-```
 
 
 ## Comaprison
@@ -170,4 +161,16 @@ ROC_SVMlinear<- roc(factor(test$Purchase)~p_modelSVMLinear[,2], plot = TRUE, pri
 
 ```{r ROC for SVMRadial}
 ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
+```
+
+
+## MARS with penalty
+
+```{r}
+modelMARS <- earth(factor(Purchase)~., data=train, degree=2,keepxy=TRUE, ncross=3, nfold=5, penalty = -1)
+```
+
+
+```{r}
+plot(modelMARS, which=1, col.rsq=0)
 ```
