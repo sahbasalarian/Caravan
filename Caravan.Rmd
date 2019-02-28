@@ -5,7 +5,7 @@ date: 'Feb. 2019'
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(fig.pos = 'H')
@@ -34,40 +34,45 @@ library(earth)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
+
+```{r initialize, echo=FALSE}
+ETA <- numeric(5)
+CI <- matrix(numeric(5*2), nrow=5, ncol=2)
+```
+
 #Introduction
 
+The Caravan dataset contains 5822 real customer records. Each record consists of 86 variables, containing sociodemographic data (variables 1-43) and product ownership (variables 44-86). The sociodemographic data is derived from zip codes. All customers living in areas with the same zip code have the same sociodemographic attributes. Variable 86 (Purchase) indicates whether the customer purchased a caravan insurance policy. Ref: R documentation, The Insurance Company (TIC) Benchmark.
 
+Our goal in this analysis is to compare different models via cross validation for better performance regarding the prediction of Purchase variable. 
 
 ##DATA EXPLANATION
 
 
-
-
-###Attribute Information
-
-```{r}
-summary(Caravan)
+```{r Purchase plot, echo=FALSE, results='asis' ,fig.align='center', fig.cap="Purchase plot"}
+#str(Caravan)
+#Fig 1
 plot(Caravan$Purchase)
 ```
+
+From the Purchase plot in Figure 1, it is evident that the target variable is very skewed.
 
 
 
 ## Data engineering : 
 
-In this stage the NA values of the data set has been detedcted and the rows with such values are omitted from the data set. 
+In this stage the NA values of the dataset have been checked. Since the dataset has no NA values, no changes are made.
 
 ```{r Omit NA , echo = FALSE}
 df <- na.omit(Caravan)
-#creating a data set without names:
-str(df)
 ```
 
 
 #Train/Test Split:
 
+The dataset has been randomely splitted into two separate sets of train and test with 70\% and 30\% of all the data, respectively.
 
-
-```{r test&cv&train, echo = FALSE}
+```{r test&train, echo = FALSE}
 set.seed(798102) 
 split <- sample (2, nrow (df), replace= TRUE, prob = c (0.7, 0.3))
 train <- df [split==1,]
@@ -76,34 +81,88 @@ test <- df [split==2,]
 
 
 
-## Use caret for training machine learning models
+## simple Logistic model :
+```{r Logistic model, echo=FALSE}
+LogFit <- glm(factor(Purchase)~. , data=train, family=binomial(link='logit'))
+DMLE1 <- LogFit$deviance
+DNULL1 <- LogFit$null.deviance
+n <- nrow(train)
+Rsq <- (1-exp((DMLE-DNULL)/n)) / (1-exp(-DNULL/n))
+yH <- ifelse(predict(LogFit, type="response") < 0.5, "No", "Yes") 
+yTe <- factor(test$Purchase)
+eta <- mean(yTe!=yH) 
+#comparisons
+MOE <- 1.96*sqrt(eta*(1-eta)/length(yH))
+CI[1,] <- round(100*(eta+c(-1,1)*MOE), 2)
+ETA[1] <- eta
+```
+With simple logistic model the Rsq is 0.1961202 for the train test. 
+ 
+## Using **caret** for training machine learning models
 
-##Use GLM to fit the model
+The **Caret** package has been used to train the machine learning algorithms. Caret has been set on default control setting with bootstraping. 
 
-```{r caret initialization}
+##Use of GLM to fit the model
+
+First the train() function is used for tunning a logistic fit to the model.
+
+```{r caret initialization, echo=FALSE}
 #caret default
 caretControl <- trainControl(method = "boot",number = 25, classProbs =  TRUE)
 ```
 
 
-```{r trian GLM}
+```{r trian GLM and summary, echo=FALSE, results='asis' , header = FALSE}
 set.seed(3233)
 modelGLM <- train(as.factor(Purchase)~., data = train, method = "glm",
                  trControl=caretControl)
-summary(modelGLM)
 modelGLM
 ```
+Based on Table 1, demonstrating the coefficients for the GLM fit, only 10 parameters have significance of more than 95%.
 
 
-```{r GLM Confusion Matrix}
-#turn probabilities into classess and look at their frequencies:
-p_modelGLM <- predict(modelGLM, test, type="prob")
-p_ClassGLM <- predict(modelGLM, test)
-confusionMatrix(p_ClassGLM, factor(test$Purchase))
+```{r GLM summary, echo= FALSE, results='asis' , header = FALSE}
+#Table 1
+print(xtable(summary(modelGLM), 
+      caption="Trained GLM with all inputs"), 
+      type="latex", caption.placement="top")
 ```
 
-##SVM
-##SVMLinear
+Confusion matrix for the train data set based on GLM model is presented in Table 2. Accuracy is 93.9\% and kappa Kappa 0.0389. 
+
+```{r GLM Confusion Matrix-Train, echo=FALSE, results='asis' , header = FALSE }
+#turn probabilities into classess and look at their frequencies:
+#Table 2- confusion, train
+p_modelGLM_train <- predict(modelGLM, train, type="prob")
+p_ClassGLM_train <- predict(modelGLM, train)
+out0<- table(p_ClassGLM_train, factor(train$Purchase))
+outx0 <- xtable(out0, caption="GLM Confusion Matrix-train")
+print(outx0, caption.placement="top")
+#confusionMatrix(p_ClassGLM_train, factor(train$Purchase))
+```
+Regarding the confusion matrix for the test data set we have, Table2:
+ 
+```{r GLM Confusion Matrix-test, echo=FALSE, results='asis' , header = FALSE }
+#turn probabilities into classess and look at their frequencies:
+#Table 2- confusion, train
+p_modelGLM_test<- predict(modelGLM, test, type="prob")
+p_ClassGLM_test <- predict(modelGLM, test)
+out1<- table(p_ClassGLM_test, factor(test$Purchase))
+outx1 <- xtable(out1, caption="GLM Confusion Matrix-test")
+print(outx1, caption.placement="top")
+#confusionMatrix(p_ClassGLM_test, factor(test$Purchase))
+```
+
+Accuracy is 0.9331, less than the no information rate of 0.9414 and kappa is 0.0313 for the test set.
+
+
+
+##SVM Training with Caret
+The caret training control has been set on boostratp.
+
+##SVM with linear kernel
+in case of probable liner decision boundaries, linear kernels become useful. This method has been investigated via caret package.
+
 ```{r trian SVM Linear}
 set.seed(3233)
 modelSVMLinear <- train(factor(Purchase)~., data = train, method = "svmLinear",
@@ -112,15 +171,39 @@ summary(modelSVMLinear)
 modelSVMLinear
 ```
 
+Confusion matrix for the SVM fit with linear kernel, Table 3, shows that SVM with linear kernel cannot predict the Purchase variable well. This fit cannot predict the "Yes" values correctly. Accuracy of 0.9411778 but kappa 0.006622094 results from this fit.
 
-```{r}
-p_modelSVMLinear <- predict(modelSVMLinear, test, "prob")
-p_ClassSVMLinear <- predict(modelSVMLinear, test)
-confusionMatrix(p_ClassSVMLinear, factor(test$Purchase))
+```{r confusion Matrix SVMLinear-train, echo=FALSE, results='asis' , header = FALSE}
+#Table 3 svmLinear train
+p_modelSVMLinear_train <- predict(modelSVMLinear, train, "prob")
+p_ClassSVMLinear_train <- predict(modelSVMLinear, train)
+out2<- table(p_ClassSVMLinear_train, factor(train$Purchase))
+outx2 <- xtable(out2, caption="SVM with linear kernel Confusion Matrix- ")
+print(outx2, caption.placement="top")
+#confusionMatrix(p_ClassSVMLinear_train, factor(train$Purchase))
+
+#p_modelSVMLinear <- predict(modelSVMLinear, test, "prob")
+#p_ClassSVMLinear <- predict(modelSVMLinear, test)
+#confusionMatrix(p_ClassSVMLinear, factor(test$Purchase))
 ```
 
+Although the accracy is high but the confusion matrix for the SVM fit with linear kernel over the test dataset, Table 4, is also showing unacceptable results for the "yes" prediction. Accuracy is 0.9414 with Kappa 0.
 
-```{r trian SVM Radial}
+```{r confusion Matrix SVMLinear-test, echo=FALSE, results='asis' , header = FALSE}
+#Table 4- svmLinear Test
+p_modelSVMLinear_test <- predict(modelSVMLinear, test, "prob")
+p_ClassSVMLinear_test <- predict(modelSVMLinear, test)
+out3<- table(p_ClassSVMLinear_test, factor(test$Purchase))
+outx3 <- xtable(out3, caption="SVM with linear kernel Confusion Matrix-Test dataset")
+print(outx3, caption.placement="top")
+#confusionMatrix(p_ClassSVMLinear_test, factor(test$Purchase))
+```
+
+#SVM with radial kernel with Caret
+
+At this stage the SVM training is applied with radial kernel. 
+
+```{r trian SVM Radial, echo=FALSE}
 set.seed(3233)
 modelSVMRadial <- train(factor(Purchase)~., data = train, method = "svmRadial",
                  trControl=caretControl)
@@ -128,49 +211,202 @@ summary(modelSVMRadial)
 modelSVMRadial
 ```
 
-```{r}
-p_modelSVMRadial <- predict(modelSVMRadial, test, "prob")
-p_ClasslSVMRadial <- predict(modelSVMRadial, test)
-confusionMatrix(p_ClasslSVMRadial, factor(test$Purchase))
+Confusion Matrix for the train dataset, Table 5, shows that the SVM fit with radial kernel has better capability in predicting the rare class of "yes". Accuracy is  0.9468 and Kappa 0.1986.    
+
+```{r confusion Matrix SVRadial-train, echo=FALSE, results='asis' , header = FALSE}
+#Table 5- train SVMradial confusion
+p_modelSVMRadial_train <- predict(modelSVMRadial, train, "prob")
+p_ClassSVMRadial_train <- predict(modelSVMRadial, train)
+out4 <- table(p_ClassSVMRadial_train, factor(train$Purchase))
+outx4 <- xtable(out4, caption="SVM with radial kernel Confusion Matrix")
+print(outx4, caption.placement="top")
+#confusionMatrix(p_ClassSVMRadial_train, factor(train$Purchase))
 ```
 
+The confision Matrix for the test dataset is also presented in Table 6. As predicted, the prediction capability of the fit has deteriorated with regards to the test data. Kappa has decreased to 0.0316.
 
+```{r confusion Matrix SVRadial-test, echo=FALSE, results='asis' , header = FALSE}
+#Table 6-test SVMradial confusion
+p_modelSVMRadial_test <- predict(modelSVMRadial, test, "prob")
+p_ClassSVMRadial_test <- predict(modelSVMRadial, test)
+out5 <- table(p_ClassSVMRadial_test, factor(test$Purchase))
+outx5 <- xtable(out5, caption="SVM with radial kernel Confusion Matrix")
+print(outx5, caption.placement="top")
+#confusionMatrix(p_ClassSVMRadial_test, factor(test$Purchase))
+```
 
+## Comaprison with Caret
 
+A general comparison betweent the fitted model so far are as follows. the comparison is made by resamples() function.
 
-## Comaprison
-
-```{r COMPARISON GLM, AIC, SVMlinear and SVMradial}
+```{r COMPARISON GLM, AIC, SVMlinear and SVMradial, echo=false}
 comparison<-resamples(list(GLM=modelGLM, SVMLinear=modelSVMLinear, SVMRadial=modelSVMRadial))
 summary(comparison)
 ```
 
+## ROC curves for analysed fits
 
+The Fitted simple logistic curve has AUC of 0.734.
 
+```{r ROC for Logistic fit, echo=FALSE,  results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for simple Logistic Fit"}
+#Figure 2
+p_LogFit<- predict(LogFit,test,type="response")
+test_roc = roc(test$Purchase~p_LogFit, plot = TRUE, print.auc = TRUE)
+```
+Similar curve resulats from training via Caret with AUC of 0.734, Figure 3.
 
-```{r ROC for GLM}
-ROC_GLM <- roc(factor(test$Purchase)~p_modelGLM[,2], plot = TRUE, print.auc = TRUE,main="ROC for GLM")
+```{r ROC for GLM, , echo=FALSE,  results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for trained GLM Fit"}
+#Figure 3
+ROC_GLM <- roc(factor(test$Purchase)~p_modelGLM_test[,2], plot = TRUE, print.auc = TRUE,main="ROC for GLM")
 ```
 
+Based on ROC curve of Figure 6 for trained SVM with linear kernel is very low 0.574.
 
-
-```{r ROC for SVMlinear}
-ROC_SVMlinear<- roc(factor(test$Purchase)~p_modelSVMLinear[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM withlinear kernel")
+```{r ROC for SVMlinear, echo=FALSE, results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for SVM with linear kernel"}
+#Figure 6
+ROC_SVMlinear<- roc(factor(test$Purchase)~p_modelSVMLinear_test[,2], plot = TRUE, print.auc = TRUE)
 ```
 
+The ROC for trained SVM with radial kernel has AUC 0.610, Figure 7.
 
-```{r ROC for SVMRadial}
-ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
+```{r ROC for SVMRadial, echo=FALSE, results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for SVM with radial kernel"}
+#Figure 7
+ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial_test[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
+```
+
+## MARS 
+
+As another model, MARS from earth() has also been investigated. first without and then with penalty.
+ 
+```{r MARS, echo=FALSE, cache=TRUE}
+modelMARS <- earth(factor(Purchase)~., data=train, degree=2, glm=list(family=binomial))
+modelMARS
+```
+
+MARS has led to a fit with RSq of 0.1128387. 
+```{r Eta Mars, echo=FALSE, warning=FALSE,include=FALSE }
+DMLE2 <- (modelMARS$glm.list[[1]])$deviance
+DNULL2 <- (modelMARS$glm.list[[1]])$null.deviance
+n <- nrow(train)
+RSq <- (1-exp((DMLE2-DNULL2)/n)) / (1-exp(-DNULL2/n))
+px <- predict(modelMARS, newdata=test, type="response")
+yH <- ifelse(px < 0.5, "No", "Yes")
+y <- factor(test$Purchase)
+eta <- mean(y!=yH)
+MOE <- 1.96*sqrt(eta*(1-eta)/length(yH))
+CI[2,] <- round(100*(eta+c(-1,1)*MOE), 2)
+ETA[2] <- eta
+
 ```
 
 
 ## MARS with penalty
+MARS with penalty -1 and nfold=5, has been considered.
 
-```{r}
-modelMARS <- earth(factor(Purchase)~., data=train, degree=2,keepxy=TRUE, ncross=3, nfold=5, penalty = -1)
+```{r MARS with penalty, echo=FALSE, warning=FALSE,include=FALSE}
+modelMARS_penalty <- earth(factor(Purchase)~., data=train, degree=2, keepxy=TRUE, ncross=3, nfold=5, penalty = -1, glm=list(family=binomial))
+modelMARS_penalty
+```
+
+RSq of 0.1167997 is resulted from MARS with penalty of -1.
+
+```{r plot mars, echo=FALSE, results='asis', fig.align='center', fig.cap="nFold-MARS model selection" }
+#Fig 
+plot(modelMARS_penalty, which=1, col.rsq=0)
+```
+
+```{r Eta Mars with penalty , echo=FALSE, warning=FALSE,include=FALSE}
+DMLE3 <- (modelMARS_penalty$glm.list[[1]])$deviance
+DNULL3 <- (modelMARS_penalty$glm.list[[1]])$null.deviance
+n <- nrow(train)
+RSq <- (1-exp((DMLE3-DNULL3)/n)) / (1-exp(-DNULL2/n))
+px <- predict(modelMARS_penalty, newdata=test, type="response")
+yH <- ifelse(px < 0.5, "No", "Yes")
+y <- factor(test$Purchase)
+eta <- mean(y!=yH)
+MOE <- 1.96*sqrt(eta*(1-eta)/length(yH))
+CI[3,] <- round(100*(eta+c(-1,1)*MOE), 2)
+ETA[3] <- eta
+```
+
+## conclusion
+
+Differnet fits of simple logistic, MARS, SVM with linear kernel and SVM with radial kanel trained by cross validation package, Caret in R, are compared together regarding the better performance of predicting the rare class of "Yes" in Caravan dataset. The dataset is very skewed twards not buying the insurance policy and the goal is to be able to predict the chance of nuying the policies. 
+
+kernla, Caret and earth packages are used in R to train the models. Among the fitted models, based on the presented confusion matrix for both train and test datasets, SVM fit with radial kernel had the highest accuracy of 0.9468 and highest Kappa of 0.1968 which decreased to 0.9402 and 0.03, repectively for the test dataset. 
+Also, the comparison has been made regarding the accuaracy and kappa values of the models trained via Caret package by resample() function. 
+The analysed ROC curves for the fitted models, show better predictions using GLM model with AUC of 0.734.
+The missclassification rate of the models are also presented in Table 7. It shows the least error for SVM with radial kernel.
+ 
+
+```{r ETA_ksvm_radial eta, echo=FALSE, warning=FALSE,include=FALSE}
+ans <- ksvm(factor(Purchase)~.,data=test, kernel="rbfdot", kpar=list(sigma = 0.01027934), C=1)
+yH <- predict(ans, newdata=test, type="response")
+eta <- mean(factor(test$Purchase)!=yH)
+MOE <- 1.96*sqrt(eta*(1-eta)/length(yH))
+CI[4,] <- round(100*(eta+c(-1,1)*MOE), 2)
+ETA[4] <- eta
 ```
 
 
-```{r}
-plot(modelMARS, which=1, col.rsq=0)
+```{r LINEAR_ksvm, echo=FALSE, warning=FALSE, results='asis' , header = FALSE}
+ans <- ksvm(factor(Purchase)~.,data=test, kernel="vanilladot", C=1)
+yH <- predict(ans, newdata=test, type="response")
+eta <- mean(test$Purchase!=yH)
+MOE <- 1.96*sqrt(eta*(1-eta)/length(yH))
+CI5 <- round(100*(eta+c(-1,1)*MOE), 2)
+CI[5,] <- CI5
+ETA[5] <- eta
+ind <- order(ETA)
+#Table 7 
+names(ETA) <- c("logistic", "MARS", "MARS/Penalized", "ksvm/RBF", "ksvm/linear")
+tb <- round(cbind(100*ETA, CI)[ind,],1)
+colnames(tb) <- c("error rate %", "lower", "upper")
+print(xtable(tb, digits=1))
 ```
+
+
+```{r COMPARE_Accuracy, results="asis", echo=FALSE, warning=FALSE, fig.align='center', fig.cap="Accuracy Comparisons with 95% C.I. Error Bars"}
+
+#Figure 8
+t <- 1-ETA
+ind <- rev(order(t))
+imp <- unlist(t)[ind]
+var <- names(t)[ind]
+tibble(
+   var = ordered(var, levels=var), #need ordered for Pareto
+   imp = imp,
+   moe = 1.96*sqrt(imp*(1-imp)/nrow(train))
+ ) %>%
+  ggplot(aes(x = var, y = imp)) + 
+  geom_bar(stat = "identity", fill="blue") +
+  geom_errorbar(aes(ymin=imp-moe, ymax=imp+moe),
+                  width=0.5, colour="red", size=2) +
+  #ggtitle("") +
+  xlab("ML Algorithm") +
+  ylab("Accuracy on Training Data") +
+  coord_flip()
+```
+
+```{r CHART, results="asis", echo=FALSE, warning=FALSE, fig.align='center', fig.cap="Mis-classification Rates (%) on Test Data"}
+ETA2 <- ETA[ind]
+var <- names(ETA2)
+tibble(
+   var = ordered(var, levels=var), #need ordered for Pareto
+   imp = c(ETA2)
+ ) %>%
+  ggplot(aes(x = var, y = imp)) + 
+  geom_bar(stat = "identity", fill="blue") +
+  #ggtitle("Mis-classification Rates") +
+  xlab("Algorithm") +
+  ylab("Error Rate") +
+  coord_flip()
+```
+
+
+
+```
+ 
+
+
+
