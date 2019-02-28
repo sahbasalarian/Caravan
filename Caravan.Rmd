@@ -239,7 +239,7 @@ print(outx5, caption.placement="top")
 
 A general comparison betweent the fitted model so far are as follows. the comparison is made by resamples() function.
 
-```{r COMPARISON GLM, AIC, SVMlinear and SVMradial, echo=false}
+```{r COMPARISON GLM, AIC, SVMlinear and SVMradial, echo=FALSE}
 comparison<-resamples(list(GLM=modelGLM, SVMLinear=modelSVMLinear, SVMRadial=modelSVMRadial))
 summary(comparison)
 ```
