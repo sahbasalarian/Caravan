@@ -87,7 +87,7 @@ LogFit <- glm(factor(Purchase)~. , data=train, family=binomial(link='logit'))
 DMLE1 <- LogFit$deviance
 DNULL1 <- LogFit$null.deviance
 n <- nrow(train)
-Rsq <- (1-exp((DMLE-DNULL)/n)) / (1-exp(-DNULL/n))
+Rsq <- (1-exp((DMLE1-DNULL1)/n)) / (1-exp(-DNULL1/n))
 yH <- ifelse(predict(LogFit, type="response") < 0.5, "No", "Yes") 
 yTe <- factor(test$Purchase)
 eta <- mean(yTe!=yH) 
@@ -319,7 +319,7 @@ plot(modelMARS_penalty, which=1, col.rsq=0)
 DMLE3 <- (modelMARS_penalty$glm.list[[1]])$deviance
 DNULL3 <- (modelMARS_penalty$glm.list[[1]])$null.deviance
 n <- nrow(train)
-RSq <- (1-exp((DMLE3-DNULL3)/n)) / (1-exp(-DNULL2/n))
+RSq <- (1-exp((DMLE3-DNULL3)/n)) / (1-exp(-DNULL3/n))
 px <- predict(modelMARS_penalty, newdata=test, type="response")
 yH <- ifelse(px < 0.5, "No", "Yes")
 y <- factor(test$Purchase)
@@ -366,7 +366,7 @@ print(xtable(tb, digits=1))
 ```
 
 
-```{r COMPARE_Accuracy, results="asis", echo=FALSE, warning=FALSE, fig.align='center', fig.cap="Accuracy Comparisons with 95% C.I. Error Bars"}
+```{r COMPARE_Accuracy, results="asis", echo=FALSE, warning=FALSE, fig.align='center'}
 
 #Figure 8
 t <- 1-ETA
@@ -382,13 +382,13 @@ tibble(
   geom_bar(stat = "identity", fill="blue") +
   geom_errorbar(aes(ymin=imp-moe, ymax=imp+moe),
                   width=0.5, colour="red", size=2) +
-  #ggtitle("") +
+  ggtitle("Accuracy Comparisons with 95% C.I. Error Bars") +
   xlab("ML Algorithm") +
   ylab("Accuracy on Training Data") +
   coord_flip()
 ```
 
-```{r CHART, results="asis", echo=FALSE, warning=FALSE, fig.align='center', fig.cap="Mis-classification Rates (%) on Test Data"}
+```{r CHART, results="asis", echo=FALSE, warning=FALSE, fig.align='center'}
 ETA2 <- ETA[ind]
 var <- names(ETA2)
 tibble(
@@ -397,7 +397,7 @@ tibble(
  ) %>%
   ggplot(aes(x = var, y = imp)) + 
   geom_bar(stat = "identity", fill="blue") +
-  #ggtitle("Mis-classification Rates") +
+  ggtitle("Mis-classification Rates") +
   xlab("Algorithm") +
   ylab("Error Rate") +
   coord_flip()
