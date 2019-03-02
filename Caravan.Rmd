@@ -48,16 +48,13 @@ Our goal in this analysis is to compare different models via cross validation fo
 
 ##DATA EXPLANATION
 
+From the Purchase plot in Figure 1, it is evident that the target variable is very skewed.
 
-```{r Purchase plot, echo=FALSE, results='asis' ,fig.align='center', fig.cap="Purchase plot"}
+```{r Purchase plot, echo=FALSE, results='asis', fig.height=4, fig.width=4 ,fig.align='center', fig.cap="Purchase plot"}
 #str(Caravan)
 #Fig 1
 plot(Caravan$Purchase)
 ```
-
-From the Purchase plot in Figure 1, it is evident that the target variable is very skewed.
-
-\newpage
 
 ## Data engineering : 
 
@@ -80,10 +77,9 @@ test <- df [split==2,]
 ```
 
 
-
 ## simple Logistic model :
 ```{r Logistic model, echo=FALSE}
-LogFit <- glm(factor(Purchase)~. , data=train, family=binomial(link='logit'))
+LogFit <- glm(Purchase~. , data = train , family=binomial(link='logit'))
 DMLE1 <- LogFit$deviance
 DNULL1 <- LogFit$null.deviance
 n <- nrow(train)
@@ -98,7 +94,7 @@ ETA[1] <- eta
 Rsq
 eta
 ```
-With simple logistic model the Rsq is 0.1961202 for the train test. 
+With simple logistic model the Rsq is 0.1961202  and 0.06050339 average mis-classificaion rate for the train test. 
  
 \newpage
 
@@ -252,7 +248,6 @@ comparison<-resamples(list(GLM=modelGLM, SVMLinear=modelSVMLinear, SVMRadial=mod
 summary(comparison)
 ```
 
-\newpage
 
 ## ROC curves for analysed fits
 
@@ -267,7 +262,7 @@ Similar curve resulats from training via Caret with AUC of 0.734, Figure 3.
 
 ```{r ROC for GLM, , echo=FALSE,  results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for trained GLM Fit"}
 #Figure 3
-ROC_GLM <- roc(factor(test$Purchase)~p_modelGLM_test[,2], plot = TRUE, print.auc = TRUE,main="ROC for GLM")
+ROC_GLM <- roc(factor(test$Purchase)~p_modelGLM_test[,2], plot = TRUE, print.auc = TRUE)
 ```
 
 \newpage
@@ -283,7 +278,7 @@ The ROC for trained SVM with radial kernel has AUC 0.610, Figure 5.
 
 ```{r ROC for SVMRadial, echo=FALSE, results='asis' , header = FALSE, fig.align='center', fig.cap="ROC for SVM with radial kernel"}
 #Figure 5
-ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial_test[,2], plot = TRUE, print.auc = TRUE, main="ROC for SVM with radial kernel")
+ROC_SVMRadial<- roc(factor(test$Purchase)~p_modelSVMRadial_test[,2], plot = TRUE, print.auc = TRUE)
 ```
 
 \newpage
@@ -324,7 +319,6 @@ modelMARS_penalty
 
 RSq of 0.1167997 is resulted from MARS with penalty of -1.
 
-\newpage
 
 ```{r plot mars, echo=FALSE, results='asis', fig.align='center', fig.cap="nFold-MARS model selection" }
 #Fig 6
@@ -354,7 +348,7 @@ Differnet fits of simple logistic, MARS, SVM with linear kernel and SVM with rad
 kernla, Caret and earth packages are used in R to train the models. Among the fitted models, based on the presented confusion matrix for both train and test datasets, SVM fit with radial kernel had the highest accuracy of 0.9468 and highest Kappa of 0.1968 which decreased to 0.9402 and 0.03, repectively for the test dataset. 
 Also, the comparison has been made regarding the accuaracy and kappa values of the models trained via Caret package by resample() function. It is also demonstrated in Figure 7. 
 The analysed ROC curves for the fitted models, show better predictions using GLM model with AUC of 0.734.
-The missclassification rate of the models are also presented in Table 6 and Figure 8. It shows the least error for SVM with radial kernel.
+The missclassification rate of the models are also presented in Table 6 and Figure 8. It shows the least error and best accuracy for SVM with radial kernel.
  
 
 
@@ -381,7 +375,7 @@ ind <- order(ETA)
 names(ETA) <- c("logistic", "MARS", "MARS/Penalized", "ksvm/RBF", "ksvm/linear")
 tb <- round(cbind(100*ETA, CI)[ind,],1)
 colnames(tb) <- c("error rate %", "lower", "upper")
-print(xtable(tb, digits=1))
+print(xtable(tb, digits=1), caption= "Miss-calssification rates for different fitted models")
 ```
 
 
